@@ -1,34 +1,36 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb';
+import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient } from '../utils/db.js';
 import { verifyPassword, createToken, getCorsHeaders } from '../utils/auth.js';
 
 export const handler = async (event) => {
-  const origin = event.headers?.origin || event.headers?.Origin;
-  
   try {
-    const { userId, secretText } = JSON.parse(event.body);
-    if (!userId || !secretText) {
-      return { statusCode: 400, headers: getCorsHeaders(origin), body: JSON.stringify({ error: 'userId and secretText required' }) };
+    const { name, password } = JSON.parse(event.body);
+    if (!name || !password) {
+      return { statusCode: 400, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Name and password required' }) };
     }
 
-    const result = await docClient.send(new GetCommand({
+    const result = await docClient.send(new ScanCommand({
       TableName: process.env.DYNAMODB_TABLE,
-      Key: { userId }
+      FilterExpression: '#name = :name',
+      ExpressionAttributeNames: { '#name': 'name' },
+      ExpressionAttributeValues: { ':name': name }
     }));
 
-    if (!result.Item || !verifyPassword(secretText, result.Item.secretText)) {
-      return { statusCode: 401, headers: getCorsHeaders(origin), body: JSON.stringify({ error: 'Invalid credentials' }) };
+    if (!result.Items || result.Items.length === 0 || !verifyPassword(password, result.Items[0].password)) {
+      return { statusCode: 401, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Invalid credentials' }) };
     }
 
-    const token = createToken(userId);
+    const token = createToken(result.Items[0].userId);
 
     return {
       statusCode: 200,
-      headers: getCorsHeaders(origin),
-      cookies: [`authToken=${token}; HttpOnly; Secure; SameSite=None; Max-Age=86400`],
-      body: JSON.stringify({ message: 'Login successful', name: result.Item.name })
+      headers: {
+        ...getCorsHeaders(),
+        'Set-Cookie': `authToken=${token}; HttpOnly; Secure; SameSite=None; Max-Age=86400; Path=/`
+      },
+      body: JSON.stringify({ message: 'Login successful', userId: result.Items[0].userId })
     };
   } catch (err) {
-    return { statusCode: 500, headers: getCorsHeaders(origin), body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: getCorsHeaders(), body: JSON.stringify({ error: err.message }) };
   }
 };

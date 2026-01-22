@@ -1,12 +1,12 @@
 import { getCorsHeaders } from '../utils/auth.js';
 
 export const handler = async (event) => {
-  const origin = event.headers?.origin || event.headers?.Origin;
-  
   return {
     statusCode: 200,
-    headers: getCorsHeaders(origin),
-    cookies: ['authToken=; HttpOnly; Secure; SameSite=None; Max-Age=0'],
+    headers: {
+      ...getCorsHeaders(),
+      'Set-Cookie': 'authToken=; HttpOnly; Secure; SameSite=None; Max-Age=0; Path=/'
+    },
     body: JSON.stringify({ message: 'Logged out' })
   };
 };

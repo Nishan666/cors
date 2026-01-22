@@ -3,33 +3,36 @@ import { docClient } from '../utils/db.js';
 import { verifyToken, getCorsHeaders } from '../utils/auth.js';
 
 export const handler = async (event) => {
-  const origin = event.headers?.origin || event.headers?.Origin;
-  
   try {
     const cookies = {};
-    if (event.cookies) {
-      event.cookies.forEach(c => {
-        const [key, val] = c.split('=');
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
+    if (cookieHeader) {
+      cookieHeader.split(';').forEach(c => {
+        const [key, val] = c.trim().split('=');
         cookies[key] = val;
       });
     }
 
+    if (!cookies.authToken) {
+      return { statusCode: 401, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Not authenticated' }) };
+    }
+
     const decoded = verifyToken(cookies.authToken);
-    const { name } = JSON.parse(event.body);
-    if (!name) {
-      return { statusCode: 400, headers: getCorsHeaders(origin), body: JSON.stringify({ error: 'Name required' }) };
+    const { message } = JSON.parse(event.body);
+    if (!message) {
+      return { statusCode: 400, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Message required' }) };
     }
 
     await docClient.send(new UpdateCommand({
       TableName: process.env.DYNAMODB_TABLE,
       Key: { userId: decoded.userId },
-      UpdateExpression: 'SET #name = :name',
-      ExpressionAttributeNames: { '#name': 'name' },
-      ExpressionAttributeValues: { ':name': name }
+      UpdateExpression: 'SET #message = :message',
+      ExpressionAttributeNames: { '#message': 'message' },
+      ExpressionAttributeValues: { ':message': message }
     }));
 
-    return { statusCode: 200, headers: getCorsHeaders(origin), body: JSON.stringify({ message: 'User updated' }) };
+    return { statusCode: 200, headers: getCorsHeaders(), body: JSON.stringify({ message: 'Message updated' }) };
   } catch (err) {
-    return { statusCode: 500, headers: getCorsHeaders(origin), body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: getCorsHeaders(), body: JSON.stringify({ error: err.message }) };
   }
 };

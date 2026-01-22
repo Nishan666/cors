@@ -1,44 +1,67 @@
 import { useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import './App.css';
 
 const API_URL = 'https://3bukmo18b0.execute-api.us-east-1.amazonaws.com';
 
 function App() {
   const [view, setView] = useState('login');
-  const [message, setMessage] = useState('');
   const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const formData = new FormData(e.target);
-    const res = await fetch(`${API_URL}/api/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: formData.get('name'),
-        secretText: formData.get('secret')
-      })
-    });
-    const data = await res.json();
-    setMessage(data.message || data.error);
-    if (data.userId) setMessage(`User created! ID: ${data.userId}`);
+    try {
+      const res = await fetch(`${API_URL}/api/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          message: formData.get('message'),
+          password: formData.get('password')
+        })
+      });
+      const data = await res.json();
+      if (data.userId) {
+        toast.success(`Account created! Your ID: ${data.userId}`);
+        setTimeout(() => setView('login'), 2000);
+      } else {
+        toast.error(data.error || 'Failed to create account');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const formData = new FormData(e.target);
-    const res = await fetch(`${API_URL}/api/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: formData.get('userId'),
-        secretText: formData.get('secret')
-      })
-    });
-    const data = await res.json();
-    setMessage(data.message || data.error);
-    if (res.ok) setView('dashboard');
+    try {
+      const res = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          password: formData.get('password')
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setView('dashboard');
+        fetchUser();
+        toast.success('Logged in successfully!');
+      } else {
+        toast.error(data.error || 'Login failed');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchUser = async () => {
@@ -49,72 +72,131 @@ function App() {
     setUserData(data);
   };
 
-  const updateUser = async (e) => {
+  const updateMessage = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const formData = new FormData(e.target);
-    const res = await fetch(`${API_URL}/api/user`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: formData.get('name') })
-    });
-    const data = await res.json();
-    setMessage(data.message || data.error);
-    fetchUser();
+    try {
+      const res = await fetch(`${API_URL}/api/user`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: formData.get('message') })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Message updated successfully!');
+        setIsEditing(false);
+        fetchUser();
+      } else {
+        toast.error(data.error || 'Update failed');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
-    await fetch(`${API_URL}/api/logout`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-    setView('login');
-    setUserData(null);
-    setMessage('Logged out');
+    setIsLoggingOut(true);
+    try {
+      await fetch(`${API_URL}/api/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setView('login');
+      setUserData(null);
+      setIsEditing(false);
+      toast.success('Logged out successfully!');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
-    <div className="app">
-      <h1>CORS Demo</h1>
-      {message && <p className="message">{message}</p>}
+    <div className="container">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: '#1a1a1a',
+            color: '#fff',
+            border: '1px solid #333',
+          },
+          success: {
+            iconTheme: {
+              primary: '#667eea',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+      <div className="card">
+        <h1>🌐 CORS</h1>
+        
+        {view === 'login' && (
+          <>
+            <h2>Login</h2>
+            <form onSubmit={handleLogin}>
+              <input name="name" placeholder="Name" required disabled={loading} />
+              <input name="password" type="password" placeholder="Password" required disabled={loading} />
+              <button type="submit" disabled={loading}>{loading ? 'Loading...' : 'Login'}</button>
+            </form>
+            <div className="btn-group">
+              <button className="secondary" onClick={() => setView('create')} disabled={loading}>Create Account</button>
+            </div>
+          </>
+        )}
 
-      {view === 'login' && (
-        <div>
-          <h2>Login</h2>
-          <form onSubmit={handleLogin}>
-            <input name="userId" placeholder="User ID" required />
-            <input name="secret" type="password" placeholder="Secret" required />
-            <button type="submit">Login</button>
-          </form>
-          <button onClick={() => setView('create')}>Create Account</button>
-        </div>
-      )}
+        {view === 'create' && (
+          <>
+            <h2>Create Account</h2>
+            <form onSubmit={handleCreate}>
+              <input name="name" placeholder="Name" required disabled={loading} />
+              <textarea name="message" placeholder="Message" rows="4" required disabled={loading} />
+              <input name="password" type="password" placeholder="Password" required disabled={loading} />
+              <button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create'}</button>
+            </form>
+            <div className="btn-group">
+              <button className="secondary" onClick={() => setView('login')} disabled={loading}>Back</button>
+            </div>
+          </>
+        )}
 
-      {view === 'create' && (
-        <div>
-          <h2>Create User</h2>
-          <form onSubmit={handleCreate}>
-            <input name="name" placeholder="Name" required />
-            <input name="secret" type="password" placeholder="Secret" required />
-            <button type="submit">Create</button>
-          </form>
-          <button onClick={() => setView('login')}>Back to Login</button>
-        </div>
-      )}
-
-      {view === 'dashboard' && (
-        <div>
-          <h2>Dashboard</h2>
-          <button onClick={fetchUser}>Get User Data</button>
-          {userData && <pre>{JSON.stringify(userData, null, 2)}</pre>}
-          <h3>Update Name</h3>
-          <form onSubmit={updateUser}>
-            <input name="name" placeholder="New Name" required />
-            <button type="submit">Update</button>
-          </form>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      )}
+        {view === 'dashboard' && userData && (
+          <>
+            <h2>Welcome, {userData.name}!</h2>
+            <div className="user-info">
+              <p><strong>Message:</strong></p>
+              <div className="message-box">{userData.message}</div>
+            </div>
+            
+            {!isEditing ? (
+              <div className="btn-group">
+                <button onClick={() => setIsEditing(true)} disabled={loading || isLoggingOut}>Edit Message</button>
+              </div>
+            ) : (
+              <>
+                <h3>Edit Message</h3>
+                <form onSubmit={updateMessage}>
+                  <textarea name="message" defaultValue={userData.message} rows="4" required disabled={loading} />
+                  <button type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update'}</button>
+                  <button type="button" className="secondary" onClick={() => setIsEditing(false)} disabled={loading}>Cancel</button>
+                </form>
+              </>
+            )}
+            
+            <div className="btn-group">
+              <button className="secondary logout-btn" onClick={handleLogout} disabled={loading || isLoggingOut}>{isLoggingOut ? 'Logging out...' : 'Logout'}</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

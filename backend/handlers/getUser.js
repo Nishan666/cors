@@ -3,15 +3,18 @@ import { docClient } from '../utils/db.js';
 import { verifyToken, getCorsHeaders } from '../utils/auth.js';
 
 export const handler = async (event) => {
-  const origin = event.headers?.origin || event.headers?.Origin;
-  
   try {
     const cookies = {};
-    if (event.cookies) {
-      event.cookies.forEach(c => {
-        const [key, val] = c.split('=');
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
+    if (cookieHeader) {
+      cookieHeader.split(';').forEach(c => {
+        const [key, val] = c.trim().split('=');
         cookies[key] = val;
       });
+    }
+
+    if (!cookies.authToken) {
+      return { statusCode: 401, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Not authenticated' }) };
     }
 
     const decoded = verifyToken(cookies.authToken);
@@ -21,12 +24,12 @@ export const handler = async (event) => {
     }));
 
     if (!result.Item) {
-      return { statusCode: 404, headers: getCorsHeaders(origin), body: JSON.stringify({ error: 'User not found' }) };
+      return { statusCode: 404, headers: getCorsHeaders(), body: JSON.stringify({ error: 'User not found' }) };
     }
 
-    const { secretText, ...userData } = result.Item;
-    return { statusCode: 200, headers: getCorsHeaders(origin), body: JSON.stringify(userData) };
+    const { password, ...userData } = result.Item;
+    return { statusCode: 200, headers: getCorsHeaders(), body: JSON.stringify(userData) };
   } catch (err) {
-    return { statusCode: 500, headers: getCorsHeaders(origin), body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: getCorsHeaders(), body: JSON.stringify({ error: err.message }) };
   }
 };
