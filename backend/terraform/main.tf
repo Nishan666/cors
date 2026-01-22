@@ -4,11 +4,51 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
 }
 
 provider "aws" {
   region = var.aws_region
+}
+
+# Archive Lambda packages
+data "archive_file" "create" {
+  type        = "zip"
+  source_dir  = "${path.module}/../"
+  output_path = "${path.module}/lambda-create.zip"
+  excludes    = ["terraform"]
+}
+
+data "archive_file" "login" {
+  type        = "zip"
+  source_dir  = "${path.module}/../"
+  output_path = "${path.module}/lambda-login.zip"
+  excludes    = ["terraform"]
+}
+
+data "archive_file" "logout" {
+  type        = "zip"
+  source_dir  = "${path.module}/../"
+  output_path = "${path.module}/lambda-logout.zip"
+  excludes    = ["terraform"]
+}
+
+data "archive_file" "get_user" {
+  type        = "zip"
+  source_dir  = "${path.module}/../"
+  output_path = "${path.module}/lambda-getUser.zip"
+  excludes    = ["terraform"]
+}
+
+data "archive_file" "update_user" {
+  type        = "zip"
+  source_dir  = "${path.module}/../"
+  output_path = "${path.module}/lambda-updateUser.zip"
+  excludes    = ["terraform"]
 }
 
 # DynamoDB Table
@@ -69,12 +109,13 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
 
 # Lambda Functions
 resource "aws_lambda_function" "create" {
-  filename      = "lambda-create.zip"
-  function_name = "cors-demo-create"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handlers/create.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 30
+  filename         = data.archive_file.create.output_path
+  source_code_hash = data.archive_file.create.output_base64sha256
+  function_name    = "cors-demo-create"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handlers/create.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
 
   environment {
     variables = {
@@ -85,12 +126,13 @@ resource "aws_lambda_function" "create" {
 }
 
 resource "aws_lambda_function" "login" {
-  filename      = "lambda-login.zip"
-  function_name = "cors-demo-login"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handlers/login.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 30
+  filename         = data.archive_file.login.output_path
+  source_code_hash = data.archive_file.login.output_base64sha256
+  function_name    = "cors-demo-login"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handlers/login.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
 
   environment {
     variables = {
@@ -101,12 +143,13 @@ resource "aws_lambda_function" "login" {
 }
 
 resource "aws_lambda_function" "logout" {
-  filename      = "lambda-logout.zip"
-  function_name = "cors-demo-logout"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handlers/logout.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 30
+  filename         = data.archive_file.logout.output_path
+  source_code_hash = data.archive_file.logout.output_base64sha256
+  function_name    = "cors-demo-logout"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handlers/logout.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
 
   environment {
     variables = {
@@ -116,12 +159,13 @@ resource "aws_lambda_function" "logout" {
 }
 
 resource "aws_lambda_function" "get_user" {
-  filename      = "lambda-getUser.zip"
-  function_name = "cors-demo-get-user"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handlers/getUser.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 30
+  filename         = data.archive_file.get_user.output_path
+  source_code_hash = data.archive_file.get_user.output_base64sha256
+  function_name    = "cors-demo-get-user"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handlers/getUser.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
 
   environment {
     variables = {
@@ -132,12 +176,13 @@ resource "aws_lambda_function" "get_user" {
 }
 
 resource "aws_lambda_function" "update_user" {
-  filename      = "lambda-updateUser.zip"
-  function_name = "cors-demo-update-user"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "handlers/updateUser.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 30
+  filename         = data.archive_file.update_user.output_path
+  source_code_hash = data.archive_file.update_user.output_base64sha256
+  function_name    = "cors-demo-update-user"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handlers/updateUser.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
 
   environment {
     variables = {

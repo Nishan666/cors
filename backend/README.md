@@ -1,32 +1,37 @@
 # Backend Setup with Lambda & API Gateway
 
-## 1. Build Lambda Package
+## Deploy Infrastructure
 
 ```bash
 cd terraform
-chmod +x build.sh
-./build.sh
-```
-
-## 2. Deploy Infrastructure
-
-```bash
 terraform init
 terraform apply
 ```
 
-This creates:
-- DynamoDB table
-- Lambda function
-- API Gateway with CORS
+Terraform automatically:
+- Zips Lambda functions
+- Creates DynamoDB table
+- Deploys 5 Lambda functions
+- Sets up API Gateway with CORS
 
-## 3. Get API Endpoint
+## Get API Endpoint
 
 After deployment, copy the `api_endpoint` output and update `frontend/.env`:
 
 ```
 VITE_API_URL=https://your-api-id.execute-api.us-east-1.amazonaws.com
 ```
+
+## Adding New Handler
+
+1. Create handler file: `handlers/newHandler.js`
+2. Update `terraform/main.tf`:
+   - Add `data "archive_file"` block
+   - Add `aws_lambda_function` resource
+   - Add `aws_apigatewayv2_integration` resource
+   - Add `aws_apigatewayv2_route` resource
+   - Add `aws_lambda_permission` resource
+3. Run `terraform apply` - Terraform detects changes via hash
 
 ## API Endpoints
 
