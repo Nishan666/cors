@@ -11,7 +11,7 @@ terraform apply
 Terraform automatically:
 - Zips Lambda functions
 - Creates DynamoDB table
-- Deploys 5 Lambda functions
+- Deploys Lambda functions
 - Sets up API Gateway with CORS
 
 ## Get API Endpoint
@@ -25,13 +25,18 @@ VITE_API_URL=https://your-api-id.execute-api.us-east-1.amazonaws.com
 ## Adding New Handler
 
 1. Create handler file: `handlers/newHandler.js`
-2. Update `terraform/main.tf`:
-   - Add `data "archive_file"` block
-   - Add `aws_lambda_function` resource
-   - Add `aws_apigatewayv2_integration` resource
-   - Add `aws_apigatewayv2_route` resource
-   - Add `aws_lambda_permission` resource
-3. Run `terraform apply` - Terraform detects changes via hash
+2. Add to `terraform/variables.tf` in the `handlers` map:
+```hcl
+new_handler = {
+  handler    = "handlers/newHandler.handler"
+  method     = "GET"
+  path       = "/api/new"
+  needs_auth = false
+}
+```
+3. Run `terraform apply`
+
+That's it! No need to modify main.tf.
 
 ## API Endpoints
 

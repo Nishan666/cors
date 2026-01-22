@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './App.css';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = 'https://3bukmo18b0.execute-api.us-east-1.amazonaws.com';
 
 function App() {
   const [view, setView] = useState('login');

@@ -16,38 +16,11 @@ provider "aws" {
 }
 
 # Archive Lambda packages
-data "archive_file" "create" {
+data "archive_file" "lambda" {
+  for_each    = var.handlers
   type        = "zip"
   source_dir  = "${path.module}/../"
-  output_path = "${path.module}/lambda-create.zip"
-  excludes    = ["terraform"]
-}
-
-data "archive_file" "login" {
-  type        = "zip"
-  source_dir  = "${path.module}/../"
-  output_path = "${path.module}/lambda-login.zip"
-  excludes    = ["terraform"]
-}
-
-data "archive_file" "logout" {
-  type        = "zip"
-  source_dir  = "${path.module}/../"
-  output_path = "${path.module}/lambda-logout.zip"
-  excludes    = ["terraform"]
-}
-
-data "archive_file" "get_user" {
-  type        = "zip"
-  source_dir  = "${path.module}/../"
-  output_path = "${path.module}/lambda-getUser.zip"
-  excludes    = ["terraform"]
-}
-
-data "archive_file" "update_user" {
-  type        = "zip"
-  source_dir  = "${path.module}/../"
-  output_path = "${path.module}/lambda-updateUser.zip"
+  output_path = "${path.module}/lambda-${each.key}.zip"
   excludes    = ["terraform"]
 }
 
@@ -108,79 +81,13 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
 }
 
 # Lambda Functions
-resource "aws_lambda_function" "create" {
-  filename         = data.archive_file.create.output_path
-  source_code_hash = data.archive_file.create.output_base64sha256
-  function_name    = "cors-demo-create"
+resource "aws_lambda_function" "api" {
+  for_each         = var.handlers
+  filename         = data.archive_file.lambda[each.key].output_path
+  source_code_hash = data.archive_file.lambda[each.key].output_base64sha256
+  function_name    = "cors-demo-${each.key}"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/create.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 30
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.users.name
-      JWT_SECRET     = var.jwt_secret
-    }
-  }
-}
-
-resource "aws_lambda_function" "login" {
-  filename         = data.archive_file.login.output_path
-  source_code_hash = data.archive_file.login.output_base64sha256
-  function_name    = "cors-demo-login"
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/login.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 30
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.users.name
-      JWT_SECRET     = var.jwt_secret
-    }
-  }
-}
-
-resource "aws_lambda_function" "logout" {
-  filename         = data.archive_file.logout.output_path
-  source_code_hash = data.archive_file.logout.output_base64sha256
-  function_name    = "cors-demo-logout"
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/logout.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 30
-
-  environment {
-    variables = {
-      JWT_SECRET = var.jwt_secret
-    }
-  }
-}
-
-resource "aws_lambda_function" "get_user" {
-  filename         = data.archive_file.get_user.output_path
-  source_code_hash = data.archive_file.get_user.output_base64sha256
-  function_name    = "cors-demo-get-user"
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/getUser.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 30
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.users.name
-      JWT_SECRET     = var.jwt_secret
-    }
-  }
-}
-
-resource "aws_lambda_function" "update_user" {
-  filename         = data.archive_file.update_user.output_path
-  source_code_hash = data.archive_file.update_user.output_base64sha256
-  function_name    = "cors-demo-update-user"
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/updateUser.handler"
+  handler          = each.value.handler
   runtime          = "nodejs20.x"
   timeout          = 30
 
@@ -198,7 +105,7 @@ resource "aws_apigatewayv2_api" "api" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins     = ["http://localhost:3000", "http://localhost:5000"]
+    allow_origins     = ["http://cors-488431.s3-website-us-east-1.amazonaws.com"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers     = ["content-type", "authorization"]
     allow_credentials = true
@@ -207,65 +114,19 @@ resource "aws_apigatewayv2_api" "api" {
 }
 
 # Integrations
-resource "aws_apigatewayv2_integration" "create" {
+resource "aws_apigatewayv2_integration" "api" {
+  for_each         = var.handlers
   api_id           = aws_apigatewayv2_api.api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.create.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "login" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.login.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "logout" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.logout.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "get_user" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.get_user.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "update_user" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.update_user.invoke_arn
+  integration_uri  = aws_lambda_function.api[each.key].invoke_arn
 }
 
 # Routes
-resource "aws_apigatewayv2_route" "create" {
+resource "aws_apigatewayv2_route" "api" {
+  for_each  = var.handlers
   api_id    = aws_apigatewayv2_api.api.id
-  route_key = "POST /api/create"
-  target    = "integrations/${aws_apigatewayv2_integration.create.id}"
-}
-
-resource "aws_apigatewayv2_route" "login" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "POST /api/login"
-  target    = "integrations/${aws_apigatewayv2_integration.login.id}"
-}
-
-resource "aws_apigatewayv2_route" "logout" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "POST /api/logout"
-  target    = "integrations/${aws_apigatewayv2_integration.logout.id}"
-}
-
-resource "aws_apigatewayv2_route" "get_user" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /api/user"
-  target    = "integrations/${aws_apigatewayv2_integration.get_user.id}"
-}
-
-resource "aws_apigatewayv2_route" "update_user" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "PUT /api/user"
-  target    = "integrations/${aws_apigatewayv2_integration.update_user.id}"
+  route_key = "${each.value.method} ${each.value.path}"
+  target    = "integrations/${aws_apigatewayv2_integration.api[each.key].id}"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -275,42 +136,11 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 # Lambda Permissions
-resource "aws_lambda_permission" "create" {
+resource "aws_lambda_permission" "api" {
+  for_each      = var.handlers
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "login" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.login.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "logout" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.logout.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "get_user" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_user.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "update_user" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.update_user.function_name
+  function_name = aws_lambda_function.api[each.key].function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

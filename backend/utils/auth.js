@@ -28,9 +28,9 @@ export const verifyToken = (token) => {
   return decoded;
 };
 
-export const getCorsHeaders = (origin) => ({
-  'Access-Control-Allow-Origin': origin === 'http://localhost:3000' || origin === 'http://localhost:5000' ? origin : 'http://localhost:5000',
+export const getCorsHeaders = () => ({
+  'Access-Control-Allow-Origin': 'http://cors-488431.s3-website-us-east-1.amazonaws.com',
   'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Allow-Methods': origin === 'http://localhost:3000' ? 'POST' : 'GET,POST,PUT,DELETE',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE',
   'Content-Type': 'application/json'
 });

@@ -1,5 +1,12 @@
 # CORS Demo with DynamoDB
 
+## 🌐 Live URLs
+
+**Frontend:** http://cors-488431.s3-website-us-east-1.amazonaws.com  
+**API:** https://3bukmo18b0.execute-api.us-east-1.amazonaws.com
+
+---
+
 ## Setup
 
 ### 1. Deploy DynamoDB with Terraform
