@@ -1,6 +1,6 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient } from '../utils/db.js';
-import { verifyToken, getCorsHeaders } from '../utils/auth.js';
+import { verifyToken } from '../utils/auth.js';
 
 export const handler = async (event) => {
   try {
@@ -14,7 +14,7 @@ export const handler = async (event) => {
     }
 
     if (!cookies.authToken) {
-      return { statusCode: 401, headers: getCorsHeaders(), body: JSON.stringify({ error: 'Not authenticated' }) };
+      return { statusCode: 401, body: JSON.stringify({ error: 'Not authenticated' }) };
     }
 
     const decoded = verifyToken(cookies.authToken);
@@ -24,12 +24,12 @@ export const handler = async (event) => {
     }));
 
     if (!result.Item) {
-      return { statusCode: 404, headers: getCorsHeaders(), body: JSON.stringify({ error: 'User not found' }) };
+      return { statusCode: 404, body: JSON.stringify({ error: 'User not found' }) };
     }
 
     const { password, ...userData } = result.Item;
-    return { statusCode: 200, headers: getCorsHeaders(), body: JSON.stringify(userData) };
+    return { statusCode: 200, body: JSON.stringify(userData) };
   } catch (err) {
-    return { statusCode: 500, headers: getCorsHeaders(), body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };

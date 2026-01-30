@@ -27,10 +27,3 @@ export const verifyToken = (token) => {
   if (decoded.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
   return decoded;
 };
-
-export const getCorsHeaders = () => ({
-  'Access-Control-Allow-Origin': 'http://cors-488431.s3-website-us-east-1.amazonaws.com',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE',
-  'Content-Type': 'application/json'
-});

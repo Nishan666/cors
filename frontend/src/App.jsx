@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import './App.css';
 
@@ -7,9 +7,30 @@ const API_URL = 'https://3bukmo18b0.execute-api.us-east-1.amazonaws.com';
 function App() {
   const [view, setView] = useState('login');
   const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/user`, {
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserData(data);
+        setView('dashboard');
+      }
+    } catch (err) {
+      // User not authenticated, stay on login
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -136,8 +157,14 @@ function App() {
           },
         }}
       />
-      <div className="card">
-        <h1>🌐 CORS</h1>
+      {loading ? (
+        <div className="card">
+          <h1>🌐 CORS</h1>
+          <p style={{ textAlign: 'center', color: '#b0b0b0' }}>Loading...</p>
+        </div>
+      ) : (
+        <div className="card">
+          <h1>🌐 CORS</h1>
         
         {view === 'login' && (
           <>
@@ -197,6 +224,7 @@ function App() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
