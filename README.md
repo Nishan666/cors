@@ -47,11 +47,53 @@ npm run dev
 
 ## API Endpoints
 
-- `POST /api/create` - Create user (name, secretText)
-- `POST /api/login` - Login (userId, secretText)
+- `POST /api/create` - Create user (name, message, password)
+- `POST /api/login` - Login (name, password)
 - `GET /api/user` - Get user data (requires auth)
 - `PUT /api/user` - Update user (requires auth)
 - `POST /api/logout` - Logout
+
+## cURL Examples
+
+### Create User
+```bash
+curl -X POST https://3bukmo18b0.execute-api.us-east-1.amazonaws.com/api/create \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","message":"My secret message","password":"mypassword123"}'
+```
+
+### Login
+```bash
+curl -X POST https://3bukmo18b0.execute-api.us-east-1.amazonaws.com/api/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{"name":"John Doe","password":"mypassword123"}'
+```
+
+### Get User (requires auth)
+```bash
+curl -X GET https://3bukmo18b0.execute-api.us-east-1.amazonaws.com/api/user \
+  -b cookies.txt
+```
+
+### Update User (requires auth)
+```bash
+curl -X PUT https://3bukmo18b0.execute-api.us-east-1.amazonaws.com/api/user \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"Jane Doe","message":"Updated secret"}'
+```
+
+### Logout
+```bash
+curl -X POST https://3bukmo18b0.execute-api.us-east-1.amazonaws.com/api/logout \
+  -b cookies.txt \
+  -c cookies.txt
+```
+
+**Note:** The `-c cookies.txt` flag saves cookies (JWT token) and `-b cookies.txt` sends them with subsequent requests.
+
+cat ~/cookies.txt
 
 ## Security Features
 
